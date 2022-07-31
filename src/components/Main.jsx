@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useEffect, Fragment } from "react";
 import {
   Button,
   Dialog,
@@ -14,7 +14,6 @@ import {
 } from "@mui/material";
 import DialogContent from "@mui/material/DialogContent";
 import axios from "axios";
-import { useEffect } from "react";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
 import { styled } from "@mui/system";
@@ -33,29 +32,15 @@ const DialogButton = styled(Box)({
 });
 
 const Main = () => {
-  const phoneNumberFormater = (phoneNumber) => {
-    const pn = parsePhoneNumber(phoneNumber, "SE");
-    return pn.getNumber("national");
-  };
-
-  const [data, setData] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [selectedPhone, setSelectedPhone] = useState(null);
 
   useEffect(() => {
     axios.get("https://jsonplaceholder.typicode.com/users").then((response) => {
-      setData(response.data);
+      setUsers(response.data);
     });
   }, []);
-
-  const [phoneNumbers, setPhoneNumbers] = useState([]);
-
-  useEffect(() => {
-    if (phoneNumbers.length) return;
-    setPhoneNumbers(
-      data.map((e) => ({ id: e.id, phoneNumber: e.phone, ischecked: false }))
-    );
-  }, [data, phoneNumbers]);
-
-  const [open, setOpen] = useState(false);
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -64,43 +49,77 @@ const Main = () => {
     setOpen(false);
   };
 
+  const phoneNumberFormater = (phoneNumber) => {
+    if (phoneNumber === null) {
+      return " ";
+    }
+    // if contain "x", remove a part which has x.
+    let changeNumber = phoneNumber.split("x")[0];
+
+    // if number start with 0, remove 0.
+    if (changeNumber.startsWith("0")) {
+      changeNumber = changeNumber.slice(1);
+    }
+
+    // add + at begin of number to find region.
+    const pn1 = parsePhoneNumber("+" + changeNumber);
+
+    // find region.
+    let regionCode = pn1.getRegionCode();
+    return (
+      <div style={{ display: "flex", gap: "10px" }}>
+        {/* IF phone number has region code, show the pn1.getNumber() ELSE show number without + */}
+        <div>{pn1.getNumber() ?? changeNumber}</div>
+        {/* like above, IF has regionCode, color is blue ELSE red */}
+        <div style={{ color: regionCode ? "blue" : "red" }}>
+          {regionCode ?? "Invalid Phone Number"}
+        </div>
+      </div>
+    );
+  };
+
+  // const handleChoosePhoneNumber = (number) => {
+  //   setTimeout(() => {
+  //     handleClose();
+  //   }, 600);
+  //   setSelectedPhone(number);
+  // };
+
   return (
     <Stack>
-      <DialogButton>
+      <DialogButton sx={{ display: "flex", flexDirection: "column" }}>
         <Button variant="contained" onClick={handleClickOpen}>
           Open dialog
         </Button>
+        <Box sx={{ marginTop: "5px" }}>
+          {phoneNumberFormater(selectedPhone)}
+        </Box>
       </DialogButton>
-      <Dialog onClose={handleClose} open={open}>
+      <Dialog fullWidth onClose={handleClose} open={open}>
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            paddingTop: "10px",
+            padding: "15px 20px",
+            borderBottom: "1px solid black",
           }}
         >
-          <CloseIcon onClick={handleClose} />
-          <DialogTitle sx={{ padding: 0, paddingRight: "25%" }}>
+          <CloseIcon sx={{ cursor: "pointer" }} onClick={handleClose} />
+          <DialogTitle sx={{ padding: 0, width: "100%", textAlign: "center" }}>
             Phone Number
           </DialogTitle>
         </Box>
         <DialogContent>
           <List>
-            {phoneNumbers.map(({ id, ischecked, phoneNumber }) => (
-              <>
-                <ListItem key={id}>
+            {users.map((user) => (
+              <Fragment key={user.id}>
+                <ListItem>
                   <MyListItemButton
-                    onClick={() => {
-                      const phoneNumberClone = [...phoneNumbers];
-                      const index = phoneNumbers.findIndex((r) => id === r.id);
-                      const record = phoneNumbers[index];
-                      record.ischecked = record.ischecked ? false : true;
-                      phoneNumberClone[index] = record;
-                      setPhoneNumbers(phoneNumberClone);
-                    }}
+                    onClick={() => setSelectedPhone(user.phone)}
+                    // onClick={() => handleChoosePhoneNumber(user.phone)}
                   >
-                    <ListItemText primary={phoneNumberFormater(phoneNumber)} />
-                    {ischecked && (
+                    <ListItemText primary={phoneNumberFormater(user.phone)} />
+                    {user.phone === selectedPhone && (
                       <ListItemIcon>
                         <CheckCircleIcon sx={{ color: "blue" }} />
                       </ListItemIcon>
@@ -108,7 +127,7 @@ const Main = () => {
                   </MyListItemButton>
                 </ListItem>
                 <Divider />
-              </>
+              </Fragment>
             ))}
           </List>
         </DialogContent>
