@@ -113,7 +113,7 @@ const Main = () => {
 
   return (
     <Stack>
-      <DialogButton>
+      <DialogButton sx={{ display: "flex", flexDirection: "column" }}>
         <Button variant="contained" onClick={handleClickOpen}>
           Open dialog
         </Button>
